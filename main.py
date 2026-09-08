@@ -1,0 +1,192 @@
+import requests
+import time
+import random
+import os
+
+ENV_FILE = ".env"
+BASE_URL = "https://api.prod.biedronka.cloud/api/v7"
+AUTH_URL = "https://konto.biedronka.pl/realms/loyalty/protocol/openid-connect/token"
+
+
+def load_env():
+    env_vars = {}
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    env_vars[key.strip()] = value.strip()
+    return env_vars
+
+
+def update_env(key, value):
+    env_vars = load_env()
+    env_vars[key] = value
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        for k, v in env_vars.items():
+            f.write(f"{k}={v}\n")
+
+
+def send_discord_webhook(webhook_url, activated_offers):
+    if not webhook_url or not activated_offers:
+        return
+
+    description = "\n".join([f"✅ **{offer}**" for offer in activated_offers])
+
+    payload = {
+        "embeds": [
+            {
+                "title": "🎉 Biedronka Offers Activated!",
+                "description": description,
+                "color": 15158332,
+                "footer": {
+                    "text": "@fixedzik/biedronka-opener"
+                }
+            }
+        ]
+    }
+
+    try:
+        requests.post(webhook_url, json=payload)
+    except:
+        pass
+
+
+def get_fresh_tokens(refresh_token):
+    print("Refreshing access token...")
+    payload = {
+        "client_id": "cma20",
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "iOS/2.22.1"
+    }
+
+    response = requests.post(AUTH_URL, data=payload, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        new_access_token = data.get("access_token")
+        new_refresh_token = data.get("refresh_token")
+
+        if new_refresh_token and new_refresh_token != refresh_token:
+            update_env("REFRESH_TOKEN", new_refresh_token)
+
+        print("Access token generated.")
+        return new_access_token
+
+    print(f"Token refresh failed ({response.status_code})")
+    return None
+
+
+def fetch_and_activate_offers(access_token):
+    api_headers = {
+        "Authorization": f"Bearer {access_token}",
+        "User-Agent": "iOS/2.22.1",
+        "Accept": "*/*",
+        "Accept-Language": "en-US",
+        "Content-Type": "application/json"
+    }
+
+    dashboard_url = f"{BASE_URL}/dashboards/dashboard/"
+    print("Fetching dashboard...")
+
+    dashboard_response = requests.get(dashboard_url, headers=api_headers)
+    if dashboard_response.status_code != 200:
+        print(f"Dashboard fetch failed: {dashboard_response.status_code}")
+        return []
+
+    dashboard_data = dashboard_response.json()
+    sections = dashboard_data.get("sections", [])
+
+    carousel_id = None
+    for section in sections:
+        if section.get("slug") == "Just4You":
+            carousel_id = section.get("param")
+            break
+
+    if not carousel_id:
+        print("Just4You section not found.")
+        return []
+
+    print(f"Carousel ID: {carousel_id}")
+
+    carousel_url = f"{BASE_URL}/promos/carousels/{carousel_id}/"
+    print("Fetching offers...")
+
+    carousel_response = requests.get(carousel_url, headers=api_headers)
+    if carousel_response.status_code != 200:
+        print(f"Carousel fetch failed: {carousel_response.status_code}")
+        return []
+
+    items = carousel_response.json().get("items", [])
+    offers_to_activate = [item for item in items if "offer_id" in item]
+
+    if not offers_to_activate:
+        print("No offers to activate.")
+        return []
+
+    print(f"Offers found: {len(offers_to_activate)}")
+    time.sleep(random.uniform(3.0, 5.0))
+
+    activated_in_this_run = []
+
+    for offer in offers_to_activate:
+        offer_id = offer.get("offer_id")
+        offer_type = offer.get("offer_type", "SHAKEOMAT")
+
+        print(f"Activating: {offer_type} ({offer_id})")
+        activate_url = f"{BASE_URL}/offers/{offer_id}/reveal-and-activate/"
+        activate_response = requests.patch(activate_url, headers=api_headers)
+
+        if activate_response.status_code in [200, 204]:
+            print("Activation successful.")
+            product_name = offer_type
+            try:
+                data = activate_response.json()
+                product_name = data.get("name") or data.get("title") or offer_type
+            except:
+                pass
+
+            activated_in_this_run.append(product_name)
+
+        elif activate_response.status_code in [400, 409]:
+            print("Offer already activated.")
+        else:
+            print(f"Activation failed ({activate_response.status_code})")
+
+        time.sleep(random.uniform(4.5, 6.0))
+
+    print("Process finished.")
+    return activated_in_this_run
+
+
+if __name__ == "__main__":
+    env_vars = load_env()
+    current_refresh_token = env_vars.get("REFRESH_TOKEN")
+    webhook_url = env_vars.get("DISCORD_WEBHOOK_URL")
+
+    if not current_refresh_token:
+        print("REFRESH_TOKEN not found in .env")
+    else:
+        access_token = get_fresh_tokens(current_refresh_token)
+
+        if access_token:
+            all_activated_offers = []
+
+            while True:
+                new_offers = fetch_and_activate_offers(access_token)
+
+                if new_offers:
+                    all_activated_offers.extend(new_offers)
+                    print("\n⏳ Next offer might be available. Waiting 90 seconds...\n")
+                    time.sleep(90)
+                else:
+                    print("\n🛑 No more new offers available. Exiting script.")
+                    break
+
+            if all_activated_offers and webhook_url:
+                send_discord_webhook(webhook_url, all_activated_offers)
