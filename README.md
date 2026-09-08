@@ -7,7 +7,9 @@
 </p>
 
 <h4 align="center">A Python script to automatically open biedronka promotional shakeomat and send loot notifications to Discord</h4>
-<h2 align="center" style="color: red;">DISCLAIMER!<br>This project is intended solely for educational purposes and does not encourage the penetration testing or reverse engineering of any applications.</h2>
+<h2 align="center">DISCLAIMER!<br>This project is intended solely for educational purposes and does not encourage the penetration testing or reverse engineering of any applications.</h2>
+
+<br>
 
 <p align="center">
   <a href="#how-to-use">How to use</a> •
