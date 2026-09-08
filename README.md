@@ -74,7 +74,7 @@ That's it! After all these steps, the script should run at 8:00am every day!
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/fixedzik/x-kom-opener/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/fixedzik/biedronka-opener/blob/main/LICENSE) file for details.
 
 ---
 
