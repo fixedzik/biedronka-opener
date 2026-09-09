@@ -1,4 +1,4 @@
-import requests
+from curl_cffi import requests
 import time
 import random
 import os
@@ -6,6 +6,7 @@ import os
 ENV_FILE = ".env"
 BASE_URL = "https://api.prod.biedronka.cloud/api/v7"
 AUTH_URL = "https://konto.biedronka.pl/realms/loyalty/protocol/openid-connect/token"
+USER_AGENT = "iOS/2.22.2"
 
 
 def load_env():
@@ -33,27 +34,23 @@ def send_discord_webhook(webhook_url, activated_offers):
         return
 
     description = "\n".join([f"✅ **{offer}**" for offer in activated_offers])
-
     payload = {
         "embeds": [
             {
                 "title": "🎉 Biedronka Offers Activated!",
                 "description": description,
                 "color": 15158332,
-                "footer": {
-                    "text": "@fixedzik/biedronka-opener"
-                }
+                "footer": {"text": "@fixedzik/biedronka-opener"}
             }
         ]
     }
-
     try:
-        requests.post(webhook_url, json=payload)
+        requests.post(webhook_url, json=payload, impersonate="safari_ios")
     except:
         pass
 
 
-def get_fresh_tokens(refresh_token):
+def get_fresh_tokens(session, refresh_token):
     print("Refreshing access token...")
     payload = {
         "client_id": "cma20",
@@ -62,10 +59,10 @@ def get_fresh_tokens(refresh_token):
     }
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "iOS/2.22.1"
+        "User-Agent": USER_AGENT
     }
 
-    response = requests.post(AUTH_URL, data=payload, headers=headers)
+    response = session.post(AUTH_URL, data=payload, headers=headers)
 
     if response.status_code == 200:
         data = response.json()
@@ -82,19 +79,20 @@ def get_fresh_tokens(refresh_token):
     return None
 
 
-def fetch_and_activate_offers(access_token):
-    api_headers = {
+def fetch_and_activate_offers(session, access_token):
+    base_headers = {
         "Authorization": f"Bearer {access_token}",
-        "User-Agent": "iOS/2.22.1",
+        "User-Agent": USER_AGENT,
         "Accept": "*/*",
-        "Accept-Language": "en-US",
-        "Content-Type": "application/json"
+        "Accept-Language": "pl-PL",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive"
     }
 
     dashboard_url = f"{BASE_URL}/dashboards/dashboard/"
     print("Fetching dashboard...")
 
-    dashboard_response = requests.get(dashboard_url, headers=api_headers)
+    dashboard_response = session.get(dashboard_url, headers=base_headers)
     if dashboard_response.status_code != 200:
         print(f"Dashboard fetch failed: {dashboard_response.status_code}")
         return []
@@ -102,63 +100,57 @@ def fetch_and_activate_offers(access_token):
     dashboard_data = dashboard_response.json()
     sections = dashboard_data.get("sections", [])
 
-    carousel_id = None
-    for section in sections:
-        if section.get("slug") == "Just4You":
-            carousel_id = section.get("param")
-            break
+    carousel_ids = [s.get("param") for s in sections if s.get("type") == "Carousels" and s.get("param")]
 
-    if not carousel_id:
-        print("Just4You section not found.")
+    if not carousel_ids:
+        print("Nie znaleziono żadnych karuzel.")
         return []
-
-    print(f"Carousel ID: {carousel_id}")
-
-    carousel_url = f"{BASE_URL}/promos/carousels/{carousel_id}/"
-    print("Fetching offers...")
-
-    carousel_response = requests.get(carousel_url, headers=api_headers)
-    if carousel_response.status_code != 200:
-        print(f"Carousel fetch failed: {carousel_response.status_code}")
-        return []
-
-    items = carousel_response.json().get("items", [])
-    offers_to_activate = [item for item in items if "offer_id" in item]
-
-    if not offers_to_activate:
-        print("No offers to activate.")
-        return []
-
-    print(f"Offers found: {len(offers_to_activate)}")
-    time.sleep(random.uniform(3.0, 5.0))
 
     activated_in_this_run = []
 
-    for offer in offers_to_activate:
-        offer_id = offer.get("offer_id")
-        offer_type = offer.get("offer_type", "SHAKEOMAT")
+    for cid in carousel_ids:
+        carousel_url = f"{BASE_URL}/promos/carousels/{cid}/"
+        carousel_response = session.get(carousel_url, headers=base_headers)
 
-        print(f"Activating: {offer_type} ({offer_id})")
-        activate_url = f"{BASE_URL}/offers/{offer_id}/reveal-and-activate/"
-        activate_response = requests.patch(activate_url, headers=api_headers)
+        if carousel_response.status_code != 200:
+            continue
 
-        if activate_response.status_code in [200, 204]:
-            print("Activation successful.")
-            product_name = offer_type
-            try:
-                data = activate_response.json()
-                product_name = data.get("name") or data.get("title") or offer_type
-            except:
-                pass
+        items = carousel_response.json().get("items", [])
+        offers_to_activate = [item for item in items if "offer_id" in item]
 
-            activated_in_this_run.append(product_name)
+        for offer in offers_to_activate:
+            offer_id = offer.get("offer_id")
+            offer_type = offer.get("offer_type", "SHAKEOMAT")
 
-        elif activate_response.status_code in [400, 409]:
-            print("Offer already activated.")
-        else:
-            print(f"Activation failed ({activate_response.status_code})")
+            print(f"Checking state: {offer_type} ({offer_id})")
+            check_url = f"{BASE_URL}/offers/{offer_id}/check-activation/"
+            session.get(check_url, headers=base_headers)
 
-        time.sleep(random.uniform(4.5, 6.0))
+            time.sleep(random.uniform(1.0, 2.0))
+
+            print(f"Activating: {offer_type} ({offer_id})")
+            activate_url = f"{BASE_URL}/offers/{offer_id}/reveal-and-activate/"
+
+            patch_headers = base_headers.copy()
+            patch_headers["Content-Type"] = "application/json"
+
+            activate_response = session.patch(activate_url, headers=patch_headers)
+
+            if activate_response.status_code in [200, 204]:
+                print("✅ Activation successful.")
+                product_name = offer_type
+                try:
+                    data = activate_response.json()
+                    product_name = data.get("name") or data.get("title") or offer_type
+                except:
+                    pass
+                activated_in_this_run.append(product_name)
+            elif activate_response.status_code in [400, 409]:
+                print("⚠️ Offer already activated.")
+            else:
+                print(f"❌ Activation failed ({activate_response.status_code})")
+
+            time.sleep(random.uniform(4.5, 6.0))
 
     print("Process finished.")
     return activated_in_this_run
@@ -172,20 +164,22 @@ if __name__ == "__main__":
     if not current_refresh_token:
         print("REFRESH_TOKEN not found in .env")
     else:
-        access_token = get_fresh_tokens(current_refresh_token)
+        session = requests.Session(impersonate="safari_ios")
+
+        access_token = get_fresh_tokens(session, current_refresh_token)
 
         if access_token:
             all_activated_offers = []
 
             while True:
-                new_offers = fetch_and_activate_offers(access_token)
+                new_offers = fetch_and_activate_offers(session, access_token)
 
                 if new_offers:
                     all_activated_offers.extend(new_offers)
-                    print("\n⏳ Next offer might be available. Waiting 90 seconds...\n")
+                    print("\nWaiting 90 seconds for next activation...\n")
                     time.sleep(90)
                 else:
-                    print("\n🛑 No more new offers available. Exiting script.")
+                    print("\nNo more new offers available. Exiting script.")
                     break
 
             if all_activated_offers and webhook_url:
