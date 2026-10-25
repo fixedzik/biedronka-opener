@@ -29,8 +29,9 @@ $ git clone https://github.com/fixedzik/biedronka-opener.git
 # Fill your credentials file with your refresh token* and discord webhook
 $ cd biedronka-opener
 $ vim .env
-```
+
 * you can find a guide to refresh token in private/guide.mp4
+```
 
 ```bash
 # Enable the script
