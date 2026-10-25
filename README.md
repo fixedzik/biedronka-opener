@@ -18,50 +18,45 @@
 
 ## How to use
 
-INSTRUKCJA NIE ZROBIONA!! TO NIE DO TEGO!!
-
-You must have [Docker](https://docs.docker.com/engine/install/debian/)
+You must have [HTTP Toolkit](https://httptoolkit.com/)
 
 ```bash
 # Clone this repository
-$ git clone https://github.com/fixedzik/x-kom-opener.git
+$ git clone https://github.com/fixedzik/biedronka-opener.git
 ```
 
 ```bash
-# Fill your credentials file with your login, password and discord webhook
-$ cd x-kom-opener
-$ vim credentials
+# Fill your credentials file with your refresh token* and discord webhook
+$ cd biedronka-opener
+$ vim .env
 ```
+* you can find a guide to refresh token in private/guide.mp4
 
 ```bash
-# Test your configuration
-$ /usr/bin/docker compose build
-$ /usr/bin/docker compose up
+# Enable the script
+$ python ./main.py
 ```
-
-If no error occurs, it means that the script is working and can be connected to the system automation.
-
+An extra step! If you want the script to run automatically at the time the shake machine resets, follow the steps below:
 ```bash
 # Edit your crontab
 $ crontab -e
 
 # and paste this in the last line
-0 8 * * * cd /root/x-kom-opener && /usr/bin/docker compose up >> /root/x-kom-opener/cron.log 2>&1
-# (/root/x-kom-opener this is the path where I downloaded the repository)
+30 0 * * * cd /root/biedronka && /usr/bin/python3 main.py >> console_output.log 2>&1
+# (/root/biedronka this is the path where I downloaded the repository)
 
 # Restart crontab service
 $ service cron restart # Debian/Ubuntu
 $ rc-service crond restart # Alpine Linux
 ```
 
-That's it! After all these steps, the script should run at 8:00am every day!
+That's it! After all these steps, the script should run at 12:30am every day!
 
 ## Support
 
 - Debian
 - Ubuntu
 - Alpine Linux
-- Windows
 
 ## Support the Developers
 
