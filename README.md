@@ -30,14 +30,14 @@ $ git clone https://github.com/fixedzik/biedronka-opener.git
 $ cd biedronka-opener
 $ vim .env
 
-* you can find a guide to refresh token in private/guide.mp4
+# * you can find a guide to refresh token in private/guide.mp4
 ```
 
 ```bash
 # Enable the script
 $ python ./main.py
 ```
-An extra step! If you want the script to run automatically at the time the shake machine resets, follow the steps below:
+An extra step! If you want the script to run automatically at the time the shakeomat resets, follow the steps below:
 ```bash
 # Edit your crontab
 $ crontab -e
