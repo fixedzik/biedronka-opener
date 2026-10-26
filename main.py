@@ -6,7 +6,7 @@ import os
 ENV_FILE = ".env"
 BASE_URL = "https://api.prod.biedronka.cloud/api/v7"
 AUTH_URL = "https://konto.biedronka.pl/realms/loyalty/protocol/openid-connect/token"
-USER_AGENT = "iOS/2.22.2"
+USER_AGENT = "iOS/2.24.0"
 
 
 def load_env():
@@ -148,7 +148,7 @@ def fetch_and_activate_offers(session, access_token):
             elif activate_response.status_code in [400, 409]:
                 print("⚠️ Offer already activated.")
             else:
-                print(f"❌ Activation failed ({activate_response.status_code})")
+                print(f"❌ Activation failed ({activate_response.status_code}) - {activate_response.text.strip()}")
 
             time.sleep(random.uniform(4.5, 6.0))
 
