@@ -6,7 +6,7 @@
     <img src="./private/biedronka-512.png" alt="logo" width="128">
 </p>
 
-<h4 align="center">A Python script to automatically open biedronka promotional shakeomat and send loot notifications to Discord</h4>
+<h4 align="center">A Python script to automatically open biedronka shakeomat and send loot notifications to Discord</h4>
 <h3 align="center">DISCLAIMER!<br>This project is intended solely for educational purposes and does not encourage the penetration testing or reverse engineering of any applications.</h2>
 
 <p align="center">
@@ -58,6 +58,7 @@ That's it! After all these steps, the script should run at 12:30am every day!
 - Debian
 - Ubuntu
 - Alpine Linux
+- Windows
 
 ## Support the Developers
 
@@ -65,7 +66,7 @@ That's it! After all these steps, the script should run at 12:30am every day!
 
 ## You may also like...
 
-- [lamp-script](https://github.com/fixedzik/lamp-script) - Script to install the LAMP module in less than a minute!
+- [x-kom-opener](https://github.com/fixedzik/x-kom-opener) - A Python script to automatically open x-kom promotional boxes and send loot notifications to Discord
 - [eazbiuro-scraper](https://github.com/fixedzik/eazbiuro-scraper/tree/main) - A tool for extracting products from the eazbiuro.pl online store
 
 ## License
