@@ -34,6 +34,9 @@ $ vim .env
 ```
 
 ```bash
+# Install the requirements
+$ pip install -r requirements.txt
+
 # Enable the script
 $ python ./main.py
 ```
