@@ -65,7 +65,7 @@ That's it! After all these steps, the script should run at 12:30am every day!
 
 ## Support the Developers
 
-<a href="https://supportme.fixed.ovh/" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png" alt="Support me!" style="height: 60px !important; width: 217px !important;" /></a>
+<a href="https://supportme.fixed.ovh/" target="_blank"><img src="https://cdn.fixed.ovh/supportme.png" alt="Support me!" style="height: 60px !important; width: 217px !important;" /></a>
 
 ## You may also like...
 
